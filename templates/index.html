@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RAG Document Assistant</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+    <!-- Add icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+  </head>
+  <body>
+    {% if file_count > 0 %}
+    <!-- Files Already Uploaded - Show Options -->
+    <div class="welcome-container">
+      <div class="welcome-header">
+        <div class="status-indicator uploaded"></div>
+        <h1><i class="fas fa-check-circle"></i> Welcome Back!</h1>
+        <p class="welcome-subtitle">
+          You have {{ file_count }} document{{ 's' if file_count != 1 else '' }}
+          ready for chat
+        </p>
+      </div>
+
+      <!-- Current Files Status -->
+      <div class="files-status">
+        <div class="status-card">
+          <i class="fas fa-file-pdf status-icon"></i>
+          <div class="status-info">
+            <h3>{{ file_count }}</h3>
+            <p>Documents Uploaded</p>
+          </div>
+        </div>
+        <div class="status-card">
+          <i class="fas fa-database status-icon"></i>
+          <div class="status-info">
+            <h3>Ready</h3>
+            <p>For AI Chat</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Options -->
+      <div class="action-options">
+        <h2>What would you like to do?</h2>
+
+        <div class="option-cards">
+          <!-- Go to Chat Option -->
+          <div class="option-card primary" onclick="goToChat()">
+            <div class="option-icon">
+              <i class="fas fa-comments"></i>
+            </div>
+            <div class="option-content">
+              <h3>Start Chatting</h3>
+              <p>Ask questions about your uploaded documents</p>
+              <div class="option-features">
+                <span><i class="fas fa-search"></i> Search documents</span>
+                <span><i class="fas fa-lightbulb"></i> Get insights</span>
+                <span><i class="fas fa-file-text"></i> Summarize content</span>
+              </div>
+            </div>
+            <div class="option-arrow">
+              <i class="fas fa-arrow-right"></i>
+            </div>
+          </div>
+
+          <!-- Upload More Files Option -->
+          <div class="option-card secondary" onclick="goToUpload()">
+            <div class="option-icon">
+              <i class="fas fa-cloud-upload-alt"></i>
+            </div>
+            <div class="option-content">
+              <h3>Upload More Documents</h3>
+              <p>Add additional PDF files to expand your knowledge base</p>
+              <div class="option-features">
+                <span><i class="fas fa-plus"></i> Add more PDFs</span>
+                <span
+                  ><i class="fas fa-expand-arrows-alt"></i> Expand
+                  knowledge</span
+                >
+                <span><i class="fas fa-layer-group"></i> Build library</span>
+              </div>
+            </div>
+            <div class="option-arrow">
+              <i class="fas fa-arrow-right"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="quick-actions">
+          <button class="quick-btn" onclick="viewDocuments()">
+            <i class="fas fa-list"></i> View Documents
+          </button>
+          <button class="quick-btn" onclick="deleteAllDocuments()">
+            <i class="fas fa-trash"></i> Clear All
+          </button>
+        </div>
+      </div>
+
+      <!-- Tips Section -->
+      <div class="tips-section">
+        <h4><i class="fas fa-info-circle"></i> Quick Tips:</h4>
+        <ul class="tips-list">
+          <li>Try asking: "What are the main topics in my documents?"</li>
+          <li>Use specific queries: "Find information about [topic]"</li>
+          <li>Request summaries: "Summarize the key points"</li>
+        </ul>
+      </div>
+    </div>
+
+    {% else %}
+    <!-- No Files - Show Upload Interface -->
+    <div class="upload-container">
+      <div class="upload-header">
+        <h1><i class="fas fa-cloud-upload-alt"></i> RAG Document Assistant</h1>
+        <p class="upload-subtitle">
+          Upload your PDF documents to start intelligent conversations
+        </p>
+      </div>
+
+      <!-- Upload Benefits -->
+      <div class="upload-benefits">
+        <div class="benefit-item">
+          <i class="fas fa-brain benefit-icon"></i>
+          <div class="benefit-text">
+            <h3>AI-Powered Analysis</h3>
+            <p>Advanced document understanding and intelligent responses</p>
+          </div>
+        </div>
+        <div class="benefit-item">
+          <i class="fas fa-search benefit-icon"></i>
+          <div class="benefit-text">
+            <h3>Smart Search</h3>
+            <p>Find information quickly across all your documents</p>
+          </div>
+        </div>
+        <div class="benefit-item">
+          <i class="fas fa-comments benefit-icon"></i>
+          <div class="benefit-text">
+            <h3>Natural Conversations</h3>
+            <p>Ask questions in plain language and get meaningful answers</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Get Started Button -->
+      <div class="get-started-section">
+        <button class="get-started-large-btn" onclick="goToUpload()">
+          <i class="fas fa-rocket"></i>
+          Get Started - Upload Documents
+        </button>
+        <p class="upload-note">
+          <i class="fas fa-shield-alt"></i>
+          Your documents are processed locally and securely
+        </p>
+      </div>
+
+      <!-- How It Works -->
+      <div class="how-it-works">
+        <h3>How It Works</h3>
+        <div class="steps">
+          <div class="step">
+            <div class="step-number">1</div>
+            <div class="step-content">
+              <h4>Upload PDFs</h4>
+              <p>Drag and drop or select your PDF documents</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-number">2</div>
+            <div class="step-content">
+              <h4>AI Processing</h4>
+              <p>Documents are analyzed and prepared for chat</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-number">3</div>
+            <div class="step-content">
+              <h4>Start Chatting</h4>
+              <p>Ask questions and get intelligent responses</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay" style="display: none">
+      <div class="loading-content">
+        <div class="loading-spinner"></div>
+        <p>Loading...</p>
+      </div>
+    </div>
+
+    <script>
+      // Navigation functions
+      function goToChat() {
+        showLoading();
+        window.location.href = "/chat-interface";
+      }
+
+      function goToUpload() {
+        window.location.href = "/upload-interface";
+      }
+
+      function viewDocuments() {
+        // This could open a modal or navigate to a documents list page
+        alert("View Documents functionality - to be implemented");
+      }
+
+      function deleteAllDocuments() {
+        if (
+          confirm(
+            "Are you sure you want to delete all uploaded documents? This action cannot be undone."
+          )
+        ) {
+          showLoading();
+          // Implement delete all functionality
+          fetch("/upload/delete-all", {
+            method: "DELETE",
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.success) {
+                window.location.reload();
+              } else {
+                hideLoading();
+                alert("Error deleting documents: " + data.error);
+              }
+            })
+            .catch((error) => {
+              hideLoading();
+              alert("Error deleting documents: " + error.message);
+            });
+        }
+      }
+
+      function showLoading() {
+        document.getElementById("loadingOverlay").style.display = "flex";
+      }
+
+      function hideLoading() {
+        document.getElementById("loadingOverlay").style.display = "none";
+      }
+
+      // Add hover effects to option cards
+      document.querySelectorAll(".option-card").forEach((card) => {
+        card.addEventListener("mouseenter", function () {
+          this.style.transform = "translateY(-5px)";
+        });
+
+        card.addEventListener("mouseleave", function () {
+          this.style.transform = "translateY(0)";
+        });
+      });
+
+      // Add click animation
+      document.querySelectorAll(".option-card").forEach((card) => {
+        card.addEventListener("click", function () {
+          this.style.transform = "translateY(-2px) scale(0.98)";
+          setTimeout(() => {
+            this.style.transform = "translateY(-5px)";
+          }, 150);
+        });
+      });
+    </script>
+  </body>
+</html>

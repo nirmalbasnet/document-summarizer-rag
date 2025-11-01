@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RAG Document Upload & Chat</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+    <!-- Add icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+  </head>
+  <body>
+    <!-- File Upload Section -->
+    <div class="upload-section" id="uploadSection">
+      <div class="upload-header">
+        <h2><i class="fas fa-cloud-upload-alt"></i> Upload Your Documents</h2>
+        <p>Upload PDF documents to enhance the knowledge base</p>
+      </div>
+
+      <!-- Drag and Drop Area -->
+      <div class="drag-drop-area" id="dragDropArea">
+        <div class="drag-drop-text">
+          <i
+            class="fas fa-file-pdf"
+            style="font-size: 2rem; color: #dc3545; margin-bottom: 10px"
+          ></i>
+          <div>Drag and drop PDF files here</div>
+        </div>
+        <div class="drag-drop-subtext">or click below to browse files</div>
+      </div>
+
+      <!-- File Input -->
+      <div class="file-upload-container">
+        <div class="file-input-wrapper">
+          <input
+            type="file"
+            id="fileInput"
+            class="file-input"
+            accept=".pdf"
+            multiple
+          />
+          <button
+            class="file-upload-btn"
+            onclick="document.getElementById('fileInput').click()"
+          >
+            <i class="fas fa-plus upload-icon"></i>
+            Choose PDF Files
+          </button>
+        </div>
+
+        <div class="file-restrictions">
+          <i class="fas fa-info-circle"></i>
+          <strong>Requirements:</strong> Only PDF files are allowed. You can
+          upload multiple files at once.
+        </div>
+      </div>
+
+      <!-- File List -->
+      <div class="file-list" id="fileList"></div>
+
+      <!-- Upload All Button -->
+      <div style="text-align: center">
+        <button class="upload-all-btn" id="uploadAllBtn" disabled>
+          <i class="fas fa-upload"></i> Upload All Files
+        </button>
+      </div>
+
+      <!-- Upload Progress -->
+      <div class="upload-progress" id="uploadProgress" style="display: none">
+        <div class="upload-progress-bar" id="uploadProgressBar"></div>
+      </div>
+    </div>
+
+    <!-- Notification Container -->
+    <div id="notificationContainer"></div>
+
+    <script>
+      // File Upload Management
+      class FileUploadManager {
+        constructor() {
+          this.selectedFiles = new Map();
+          this.initializeEventListeners();
+        }
+
+        initializeEventListeners() {
+          const fileInput = document.getElementById("fileInput");
+          const dragDropArea = document.getElementById("dragDropArea");
+          const uploadAllBtn = document.getElementById("uploadAllBtn");
+
+          // File input change
+          fileInput.addEventListener("change", (e) => this.handleFileSelect(e));
+
+          // Drag and drop events
+          dragDropArea.addEventListener("dragover", (e) =>
+            this.handleDragOver(e)
+          );
+          dragDropArea.addEventListener("dragleave", (e) =>
+            this.handleDragLeave(e)
+          );
+          dragDropArea.addEventListener("drop", (e) => this.handleFileDrop(e));
+          dragDropArea.addEventListener("click", () => fileInput.click());
+
+          // Upload all button
+          uploadAllBtn.addEventListener("click", () => this.uploadAllFiles());
+        }
+
+        handleDragOver(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          document.getElementById("dragDropArea").classList.add("dragover");
+          document.getElementById("uploadSection").classList.add("dragover");
+        }
+
+        handleDragLeave(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          document.getElementById("dragDropArea").classList.remove("dragover");
+          document.getElementById("uploadSection").classList.remove("dragover");
+        }
+
+        handleFileDrop(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          document.getElementById("dragDropArea").classList.remove("dragover");
+          document.getElementById("uploadSection").classList.remove("dragover");
+
+          const files = Array.from(e.dataTransfer.files);
+          this.processFiles(files);
+        }
+
+        handleFileSelect(e) {
+          const files = Array.from(e.target.files);
+          this.processFiles(files);
+        }
+
+        processFiles(files) {
+          files.forEach((file) => {
+            if (this.validateFile(file)) {
+              this.addFileToList(file);
+            }
+          });
+          this.updateUploadButton();
+        }
+
+        validateFile(file) {
+          // Check file type
+          if (file.type !== "application/pdf") {
+            this.showNotification(
+              `${file.name} is not a PDF file. Only PDF files are allowed.`,
+              "error"
+            );
+            return false;
+          }
+
+          // Check file size (50MB limit)
+          const maxSize = 50 * 1024 * 1024; // 50MB
+          if (file.size > maxSize) {
+            this.showNotification(
+              `${file.name} is too large. Maximum file size is 50MB.`,
+              "error"
+            );
+            return false;
+          }
+
+          // Check if file already exists
+          if (this.selectedFiles.has(file.name)) {
+            this.showNotification(
+              `${file.name} is already selected.`,
+              "warning"
+            );
+            return false;
+          }
+
+          return true;
+        }
+
+        addFileToList(file) {
+          const fileId = Date.now() + "_" + file.name;
+          this.selectedFiles.set(file.name, {
+            file,
+            id: fileId,
+            status: "pending",
+          });
+
+          const fileList = document.getElementById("fileList");
+          const fileItem = document.createElement("div");
+          fileItem.className = "file-item";
+          fileItem.id = fileId;
+
+          fileItem.innerHTML = `
+            <div class="file-info">
+              <i class="fas fa-file-pdf file-icon"></i>
+              <div class="file-details">
+                <div class="file-name">${file.name}</div>
+                <div class="file-size">${this.formatFileSize(file.size)}</div>
+              </div>
+            </div>
+            <div class="file-status pending">Ready</div>
+            <button class="remove-file" onclick="fileManager.removeFile('${
+              file.name
+            }')">
+              <i class="fas fa-times"></i>
+            </button>
+          `;
+
+          fileList.appendChild(fileItem);
+        }
+
+        removeFile(fileName) {
+          this.selectedFiles.delete(fileName);
+          const fileItems = document.querySelectorAll(".file-item");
+          fileItems.forEach((item) => {
+            if (item.querySelector(".file-name").textContent === fileName) {
+              item.remove();
+            }
+          });
+          this.updateUploadButton();
+        }
+
+        updateUploadButton() {
+          const uploadBtn = document.getElementById("uploadAllBtn");
+          uploadBtn.disabled = this.selectedFiles.size === 0;
+        }
+
+        formatFileSize(bytes) {
+          if (bytes === 0) return "0 Bytes";
+          const k = 1024;
+          const sizes = ["Bytes", "KB", "MB", "GB"];
+          const i = Math.floor(Math.log(bytes) / Math.log(k));
+          return (
+            parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
+          );
+        }
+
+        async uploadAllFiles() {
+          if (this.selectedFiles.size === 0) return;
+
+          const uploadBtn = document.getElementById("uploadAllBtn");
+          const progressContainer = document.getElementById("uploadProgress");
+          const progressBar = document.getElementById("uploadProgressBar");
+
+          uploadBtn.disabled = true;
+          uploadBtn.innerHTML =
+            '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+          progressContainer.style.display = "block";
+
+          let uploadedCount = 0;
+          const totalFiles = this.selectedFiles.size;
+
+          for (const [fileName, fileData] of this.selectedFiles) {
+            try {
+              await this.uploadSingleFile(fileData);
+
+              uploadedCount++;
+
+              // Update progress
+              const progress = (uploadedCount / totalFiles) * 100;
+              progressBar.style.width = progress + "%";
+            } catch (error) {
+              console.error(`Error uploading ${fileName}:`, error);
+              this.updateFileStatus(fileData.id, "error", "Failed");
+            }
+          }
+
+          // Reset UI and handle success
+          setTimeout(() => {
+            uploadBtn.disabled = false;
+            uploadBtn.innerHTML =
+              '<i class="fas fa-upload"></i> Upload All Files';
+            progressContainer.style.display = "none";
+            progressBar.style.width = "0%";
+
+            if (uploadedCount === totalFiles && uploadedCount > 0) {
+              this.showNotification(
+                `Successfully uploaded ${uploadedCount} file(s)!`,
+                "success"
+              );
+
+              // Redirect to success page after successful upload
+              setTimeout(() => {
+                window.location.href = "/chat";
+              }, 1000);
+            } else if (uploadedCount === 0) {
+              this.showNotification(
+                "No files were uploaded successfully. Please try again.",
+                "error"
+              );
+            } else {
+              this.showNotification(
+                `Uploaded ${uploadedCount}/${totalFiles} files. Some uploads failed.`,
+                "warning"
+              );
+
+              if (uploadedCount > 0) {
+                setTimeout(() => {
+                  window.location.href = "/chat";
+                }, 2000);
+              }
+            }
+          }, 1000);
+        }
+
+        async uploadSingleFile(fileData) {
+          this.updateFileStatus(fileData.id, "uploading", "Uploading...");
+
+          const formData = new FormData();
+          formData.append("file", fileData.file);
+
+          const response = await fetch("/upload", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const result = await response.json();
+
+          if (result.success) {
+            this.updateFileStatus(fileData.id, "success", "Uploaded");
+          } else {
+            throw new Error(result.error || "Upload failed");
+          }
+
+          return result;
+        }
+
+        updateFileStatus(fileId, status, text) {
+          const fileItem = document.getElementById(fileId);
+          if (fileItem) {
+            const statusElement = fileItem.querySelector(".file-status");
+            statusElement.className = `file-status ${status}`;
+            statusElement.textContent = text;
+          }
+        }
+
+        showNotification(message, type = "info") {
+          const container = document.getElementById("notificationContainer");
+          const notification = document.createElement("div");
+          notification.className = `notification ${type}`;
+          notification.textContent = message;
+
+          container.appendChild(notification);
+
+          // Show notification
+          setTimeout(() => notification.classList.add("show"), 100);
+
+          // Remove notification after 5 seconds
+          setTimeout(() => {
+            notification.classList.remove("show");
+            setTimeout(() => container.removeChild(notification), 300);
+          }, 5000);
+        }
+      }
+
+      // Initialize file upload manager
+      const fileManager = new FileUploadManager();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Upload Success - RAG Document Chat</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+    <!-- Add icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+  </head>
+  <body class="success-page-body">
+    <div class="success-container">
+      <!-- Success Animation -->
+      <div class="success-animation">
+        <div class="success-checkmark">
+          <div class="check-icon">
+            <span class="icon-line line-tip"></span>
+            <span class="icon-line line-long"></span>
+            <div class="icon-circle"></div>
+            <div class="icon-fix"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Success Content -->
+      <div class="success-content">
+        <h1 class="success-title">
+          <i class="fas fa-check-circle"></i>
+          Upload Successful!
+        </h1>
+
+        <p class="success-message">
+          Your documents have been successfully uploaded and processed for AI
+          chat.
+        </p>
+
+        <!-- Upload Summary -->
+        <div class="upload-summary">
+          <div class="summary-item">
+            <i class="fas fa-file-pdf"></i>
+            <span class="summary-label">Files Uploaded:</span>
+            <span class="summary-value" id="fileCount"
+              >{{ file_count or 1 }}</span
+            >
+          </div>
+
+          <div class="summary-item">
+            <i class="fas fa-database"></i>
+            <span class="summary-label">Processed for Chat:</span>
+            <span class="summary-value" id="processedCount"
+              >{{ processed_count or 1 }}</span
+            >
+          </div>
+
+          <div class="summary-item">
+            <i class="fas fa-clock"></i>
+            <span class="summary-label">Processing Time:</span>
+            <span class="summary-value"
+              >{{ processing_time or 'Just now' }}</span
+            >
+          </div>
+        </div>
+
+        <!-- Next Steps -->
+        <div class="next-steps">
+          <h3>What's Next?</h3>
+          <div class="steps-list">
+            <div class="step-item">
+              <i class="fas fa-comments step-icon"></i>
+              <div class="step-text">
+                <strong>Start Chatting:</strong> Ask questions about your
+                uploaded documents
+              </div>
+            </div>
+
+            <div class="step-item">
+              <i class="fas fa-search step-icon"></i>
+              <div class="step-text">
+                <strong>Find Information:</strong> Search for specific topics or
+                details
+              </div>
+            </div>
+
+            <div class="step-item">
+              <i class="fas fa-lightbulb step-icon"></i>
+              <div class="step-text">
+                <strong>Get Insights:</strong> Ask for summaries or key points
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+          <button class="get-started-btn" onclick="window.location.href='/'">
+            <i class="fas fa-rocket"></i>
+            Get Started - Chat Now!
+          </button>
+
+          <button class="secondary-btn" onclick="uploadMore()">
+            <i class="fas fa-plus"></i>
+            Upload More Documents
+          </button>
+        </div>
+
+        <!-- Tips Section -->
+        <div class="tips-section">
+          <h4><i class="fas fa-info-circle"></i> Pro Tips:</h4>
+          <ul class="tips-list">
+            <li>
+              Try asking: "What are the main topics covered in my documents?"
+            </li>
+            <li>Use specific queries: "Find information about [your topic]"</li>
+            <li>Ask for summaries: "Can you summarize the key points?"</li>
+            <li>
+              Request comparisons: "Compare different sections or documents"
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="success-footer">
+        <p>
+          <i class="fas fa-shield-alt"></i>
+          Your documents are securely stored and processed locally.
+        </p>
+      </div>
+    </div>
+
+    <script>
+      // Animation trigger
+      window.addEventListener("load", function () {
+        setTimeout(function () {
+          document.querySelector(".success-checkmark").classList.add("animate");
+        }, 300);
+      });
+
+      // Upload more documents function
+      function uploadMore() {
+        window.location.href = "/";
+      }
+
+      // Auto-redirect to chat after 10 seconds (optional)
+      let countdown = 10;
+      const autoRedirect = false; // Set to true if you want auto-redirect
+
+      if (autoRedirect) {
+        const timer = setInterval(function () {
+          countdown--;
+          if (countdown <= 0) {
+            clearInterval(timer);
+            window.location.href = "/";
+          }
+        }, 1000);
+      }
+
+      // Add some interactive effects
+      document.querySelectorAll(".step-item").forEach(function (item) {
+        item.addEventListener("mouseenter", function () {
+          this.style.transform = "translateX(10px)";
+        });
+
+        item.addEventListener("mouseleave", function () {
+          this.style.transform = "translateX(0)";
+        });
+      });
+
+      // Show upload summary with animation
+      setTimeout(function () {
+        document.querySelector(".upload-summary").style.opacity = "1";
+        document.querySelector(".upload-summary").style.transform =
+          "translateY(0)";
+      }, 800);
+
+      // Show next steps with staggered animation
+      setTimeout(function () {
+        const steps = document.querySelectorAll(".step-item");
+        steps.forEach(function (step, index) {
+          setTimeout(function () {
+            step.style.opacity = "1";
+            step.style.transform = "translateX(0)";
+          }, index * 200);
+        });
+      }, 1200);
+    </script>
+  </body>
+</html>

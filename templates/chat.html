@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RAG Document Chat</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+    <!-- Add icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+  </head>
+  <body>
+    <div class="chat-layout">
+      <!-- Sidebar -->
+      <div class="chat-sidebar" id="chatSidebar">
+        <!-- Sidebar Header -->
+        <div class="sidebar-header">
+          <div class="sidebar-title">
+            <i class="fas fa-file-alt"></i>
+            <span>Documents</span>
+          </div>
+          <button class="sidebar-toggle" id="sidebarToggle">
+            <i class="fas fa-bars"></i>
+          </button>
+        </div>
+
+        <!-- Navigation Links -->
+        {% if file_count > 0 %}
+          <div class="sidebar-nav">
+            <a href="/upload" class="nav-link">
+              <i class="fas fa-plus"></i>
+              <span>
+                  Upload More
+              </span>
+            </a>
+          </div>
+        {% endif %}
+
+        <!-- Document List -->
+        <div class="document-list">
+          <div class="document-list-header">
+            <h3>Uploaded Files ({{ file_count }})</h3>
+            <button class="refresh-docs" id="refreshDocs" title="Refresh document list">
+              <i class="fas fa-sync-alt"></i>
+            </button>
+          </div>
+          
+          <div id="documentListContainer">
+            {% if file_count == 0 %}
+              <div class="empty-documents">
+                <i class="fas fa-folder-open"></i>
+                <p>No documents uploaded yet</p>
+                <a href="/upload" class="upload-link">Upload Documents</a>
+              </div>
+            {% else %}
+              {% for file in uploaded_files %}
+                  <div class="document-item" data-filename="{{ file.filename }}">
+                    <div class="document-icon">
+                      <i class="fas fa-file-pdf"></i>
+                    </div>
+                    <div class="document-info">
+                      <div class="document-name" title="{{ file.original_filename }}">
+                        {{ file.original_filename[:25] }}{{ '...' if file.original_filename|length > 25 else '' }}
+                      </div>
+                      <div class="document-meta">
+                        <span class="file-size">{{ file.size }}</span>
+                      </div>
+                    </div>
+                    <div class="document-actions">
+                      <button class="action-btn delete" onclick="deleteDocument('{{ file.filename }}')" title="Delete">
+                        <i class="fas fa-trash"></i>
+                      </button>
+                    </div>
+                  </div>
+                {% endfor %}
+              {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Chat Area -->
+      <div class="chat-main">
+        <!-- Chat Header -->
+        <div class="chat-header">
+           <div class="header-info">
+            <h1>Document Chat Assistant</h1>
+            <div class="subtitle">
+              Ask questions about your uploaded documents. I'll search through your files to provide accurate answers.
+            </div>
+          </div>
+        </div>
+
+        <!-- Chat Container -->
+        <div class="chat-container">
+          <!-- Chat Messages Area -->
+          <div id="chat-box">
+            <div class="empty-state">
+              <div class="empty-icon">
+                <i class="fas fa-comments"></i>
+              </div>
+              <h3>Welcome to Chat!</h3>
+              <p>Start asking questions about your uploaded documents. I can help you find information, summarize content, and answer specific queries.</p>
+              <div class="example-questions">
+                  <p><strong>Try asking:</strong></p>
+                  <ul>
+                    <li>"What is this [document name] about?"</li>
+                    <li>"Summarize [document name]"</li>
+                    <li>"Find information about [topic]"</li>
+                  </ul>
+                </div>
+            </div>
+
+            <!-- Typing indicator (hidden by default) -->
+            <div class="message bot typing-message" style="display: none;">
+              <div class="message-avatar">
+                <i class="fas fa-robot"></i>
+              </div>
+              <div class="message-content">
+                <div class="typing-indicator" id="typingIndicator">
+                  <div class="typing-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Input Area -->
+          <div class="input-area">
+            <div class="input-container">
+              <textarea
+                id="userInput"
+                placeholder="Ask me anything about your documents..."
+                rows="1"
+                {% if file_count == 0 %}disabled{% endif %}
+              ></textarea>
+              <button id="sendBtn" {% if file_count == 0 %}disabled{% endif %}>
+                <i class="fas fa-paper-plane"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile Overlay -->
+    <div class="mobile-overlay" id="mobileOverlay"></div>
+
+    <!-- Document Details Modal -->
+    <div class="modal" id="documentModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Document Details</h3>
+          <button class="modal-close" onclick="closeDocumentModal()">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body" id="documentModalBody">
+          <!-- Document details will be loaded here -->
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const generateSessionId = () => {
+        return Math.random().toString(36).slice(2);
+      };
+
+      const sessionId = generateSessionId();
+
+      // Chat functionality
+      const sendBtn = document.getElementById("sendBtn");
+      const chatBox = document.getElementById("chat-box");
+      const userInput = document.getElementById("userInput");
+      const typingIndicator = document.querySelector(".typing-message");
+      const emptyState = document.querySelector(".empty-state");
+      const sidebar = document.getElementById("chatSidebar");
+      const sidebarToggle = document.getElementById("sidebarToggle");
+      const mobileMenuBtn = document.getElementById("mobileMenuBtn");
+      const mobileOverlay = document.getElementById("mobileOverlay");
+
+      // Send message on button click
+      sendBtn.addEventListener("click", sendMessage);
+
+      // Send on Enter key press (without Shift)
+      userInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault(); // prevent new line
+          sendMessage();
+        }
+      });
+
+      async function sendMessage() {
+        const message = userInput.value.trim();
+        if (!message) return;
+
+        // Add user message
+        addMessage(message, true);
+
+        // Clear input and disable while processing
+        userInput.value = "";
+        userInput.style.height = "auto";
+        setInputEnabled(false);
+
+        // Show typing indicator
+        showTyping();
+
+        try {
+          // Send to chat endpoint
+          const response = await fetch("/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sessionId: sessionId, message: message }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const data = await response.json();
+
+          // Hide typing indicator and add bot response
+          hideTyping();
+          addMessage(
+            data.reply || "Sorry, I couldn't process your request.",
+            false,
+            data.sources || null
+          );
+        } catch (error) {
+          console.error("Error:", error);
+          hideTyping();
+          addMessage(
+            "Sorry, something went wrong. Please try again.",
+            false
+          );
+        } finally {
+          setInputEnabled(true);
+          userInput.focus();
+        }
+      }
+
+      function addMessage(content, isUser = false, sources = null) {
+        // Hide empty state if it's visible
+        if (emptyState) {
+          emptyState.style.display = "none";
+        }
+
+        const messageDiv = document.createElement("div");
+        messageDiv.className = `message ${isUser ? "user" : "bot"}`;
+
+        const now = new Date();
+        const timeString = now.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+
+        let sourcesHtml = "";
+        if (sources && sources.length > 0) {
+          sourcesHtml = `
+            <div class="message-sources">
+              <div class="sources-header">
+                <i class="fas fa-link"></i>
+                <span>Sources:</span>
+              </div>
+              <div class="sources-list">
+                ${sources.map(source => `
+                  <div class="source-item">
+                    <i class="fas fa-file-pdf"></i>
+                    <span>${source}</span>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        }
+
+        const formattedContent = isUser ? content : formatChatReply(content);
+
+        messageDiv.innerHTML = `
+          <div class="message-avatar">
+            <i class="fas fa-${isUser ? 'user' : 'robot'}"></i>
+          </div>
+          <div class="message-content">
+            <div class="message-text">${formattedContent}</div>
+            ${sourcesHtml}
+            <div class="message-time">${timeString}</div>
+          </div>
+        `;
+
+        // Insert before typing indicator
+        chatBox.insertBefore(messageDiv, typingIndicator);
+        scrollToBottom();
+      }
+
+      function showTyping() {
+        typingIndicator.style.display = "flex";
+        scrollToBottom();
+      }
+
+      function hideTyping() {
+        typingIndicator.style.display = "none";
+      }
+
+      function markdownToHTML(md) {
+          // headers
+          md = md.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+          md = md.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+          md = md.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+
+          // bold + italic
+          md = md.replace(/\*\*(.*?)\*\*/gim, '<b>$1</b>');
+          md = md.replace(/\*(.*?)\*/gim, '<i>$1</i>');
+
+          // bullet points (consecutive lines starting with -)
+          md = md.replace(/^(?:\s*- .*(\n|$))+/gm, (match) => {
+              const items = match.trim().split(/\n/).map(line => {
+                  const content = line.replace(/^\s*- /, '').trim();
+                  return `<li>${content}</li>`;
+              }).join("<br>");
+              return `<ul style="padding-left: 35px;">${items}</ul>`;
+          });
+
+          // code blocks
+          md = md.replace(/```([^`]+)```/g, "<pre><code>$1</code></pre>");
+
+          // line breaks
+          md = md.replace(/\n+/g, (match) => "<br>".repeat(match.length));
+
+          // merge <ul> duplicates from regex
+          md = md.replace(/<\/ul>\s*<ul>/g, "");
+
+          return md.trim();
+      }
+
+      function formatTextReply(replyText) {
+          if (!replyText) return "";
+
+          let html = replyText;
+
+          // Replace numbered lists: 1. 2. 3.
+          html = html.replace(/^(\d+)\.\s+(.*)$/gm, "<li>$2</li>");
+
+          // Wrap consecutive <li> items in <ol>
+          html = html.replace(/(<li>[\s\S]*?<\/li>)/g, (match, p1, offset, string) => {
+              // check if this <li> is already inside <ol>
+              const before = string.slice(0, offset);
+              if (!before.endsWith("<ol>")) {
+                  return `<ol>${p1}</ol>`;
+              }
+              return p1;
+          });
+
+          // Replace double line breaks with <p> for paragraphs
+          html = html.replace(/\n\n+/g, "</p><p>");
+          html = `<p>${html}</p>`;
+
+          // Replace single line breaks inside paragraphs with <br>
+          html = html.replace(/(?<!<\/li>)\n/g, "<br>");
+
+          return html;
+      }
+
+
+      function formatChatReply(text) {
+        if (!text) return "";
+        
+        const isMarkdownText = /(^#+\s)|(\*\*.+\*\*)|(```)|(^[-*]\s+)/m.test(text)
+        
+        if (isMarkdownText) {
+          return markdownToHTML(text);
+        }
+
+        // plain text fallback
+        return formatTextReply(text);
+      }
+
+      // Sidebar functionality
+      function toggleSidebar() {
+        sidebar.classList.toggle("collapsed");
+      }
+
+      function toggleMobileSidebar() {
+        sidebar.classList.toggle("mobile-open");
+        mobileOverlay.classList.toggle("active");
+        document.body.classList.toggle("sidebar-open");
+      }
+
+      // Event listeners for sidebar
+      sidebarToggle.addEventListener("click", toggleSidebar);
+      mobileMenuBtn.addEventListener("click", toggleMobileSidebar);
+      mobileOverlay.addEventListener("click", toggleMobileSidebar);
+
+      // Auto-resize textarea
+      userInput.addEventListener("input", function () {
+        this.style.height = "auto";
+        this.style.height = this.scrollHeight + "px";
+      });
+
+
+      function scrollToBottom() {
+        chatBox.scrollTop = chatBox.scrollHeight;
+      }
+
+      function setInputEnabled(enabled) {
+        userInput.disabled = !enabled;
+        sendBtn.disabled = !enabled;
+        if (enabled) {
+          sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
+        } else {
+          sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        }
+      }
+
+      function closeDocumentModal() {
+        document.getElementById("documentModal").style.display = "none";
+      }
+
+      function askAboutDocument(filename) {
+        closeDocumentModal();
+        userInput.value = `Tell me about the document "${filename}"`;
+        userInput.focus();
+      }
+
+      async function deleteDocument(filename) {
+        if (!confirm(`Are you sure you want to delete "${filename}"?`)) {
+          return;
+        }
+
+        try {
+          const response = await fetch(`/upload/delete/${filename}`, {
+            method: "DELETE"
+          });
+          
+          const data = await response.json();
+          
+          if (data.success) {
+            // Remove from UI
+            const docElement = document.querySelector(`[data-filename="${filename}"]`);
+            if (docElement) {
+              docElement.remove();
+            }
+            
+            // Show success message
+            addMessage(`Document "${filename}" has been deleted.`, false);
+
+            window.location.reload(true);
+          } else {
+            alert("Failed to delete document: " + data.error);
+          }
+        } catch (error) {
+          console.error("Error deleting document:", error);
+          alert("Failed to delete document. Please try again.");
+        }
+      }
+
+      // Focus input on page load (if enabled)
+      window.addEventListener("load", () => {
+        if (!userInput.disabled) {
+          userInput.focus();
+        }
+      });
+    </script>
+  </body>
+</html>
