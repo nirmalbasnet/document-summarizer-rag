@@ -2,10 +2,9 @@ import logging
 from typing import List, Dict, Any
 from rag.vector_store import VectorStore
 from rag.aws_bedrock_model import get_model
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain.chains import create_history_aware_retriever, create_retrieval_chain
-from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain_classic.chains import create_history_aware_retriever, create_retrieval_chain
+from langchain_classic.chains.combine_documents import create_stuff_documents_chain
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
