@@ -8,6 +8,7 @@ def get_client():
     AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
     AWS_SESSION_TOKEN = os.getenv('AWS_SESSION_TOKEN')
     AWS_REGION = os.getenv('AWS_REGION')
+    
 
     bedrock_client = boto3.client(
         service_name="bedrock-runtime",
@@ -21,14 +22,16 @@ def get_client():
 
 def get_model():
     AWS_REGION = os.getenv('AWS_REGION')
+    MODEL_ARN = os.getenv('MODEL_ARN')
 
     bedrock_client = get_client()
 
     model = ChatBedrock(
         client=bedrock_client,
-        model_id="amazon.nova-lite-v1:0",
+        model_id=MODEL_ARN,
         region_name=AWS_REGION,
-        temperature=0
+        temperature=0,
+        provider="amazon"
     )
 
     return model

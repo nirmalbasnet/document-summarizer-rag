@@ -14,7 +14,7 @@ A powerful Retrieval-Augmented Generation (RAG) application that allows users to
 
 ## Requirements
 
-- Python 3.8+
+- Python 3.11.+
 - AWS Account with Bedrock access
 - AWS credentials configured
 
